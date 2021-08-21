@@ -15,90 +15,91 @@ const db = mysql.createConnection({
 })
 
 
-router.use(session({
-    key:"userId",
-    secret:'subscribe',
-    resave:false,
-    saveUninitialized:false,
-    cookie:{
-      expires:60*60*24,
-    },
+
+
+
+
+
+
+const authorization = (req,res,next)=>{
+  const token = req.cookies.jwt
+  if(!token){
+    return res.sendStatus(403)
+  } 
+  try{
+    const data = jwt.verify(token,'jwtsecret')
+    req.userId = data.id
     
-}))
+    return next()
+  } catch{
+    return res.sendStatus(403)
+  }
 
-// const verifyJWT = (req,res,next) =>{
-//   const token = req.headers('x-access-token')
-
-//   if(!token){
-//     res.send('tokens needed')
-//   } else {
-//     jwt.verify(token,'jwtsecret',(err,decode)=>{
-//       if(err){
-//         res.json({auth:false,message:'failed to aunthenticate'})
-//       } else {
-//         req.userId = decode.id
-//         next()
-//       }
-//     })
-//   }
-// }
-
+}
 
 /* GET home page. */
-router.get('/', function(req, res, next) {
-  // try {
-  //   const cookie = req.cookies('jwt')
-  // const claims = verify(cookie,'jwtsecret')
-  // if(!claims){
-  //   return res.status(401).send('unauthenticated')
-  // }
-  // res.send(claims.id)
-  
-  // } catch (error) {
-  //   return res.status(401).send('unautheticated')
-  // }
-  res.send('hello world')
-  
-  
- 
-  
-});
+router.get('/home',function(req, res, next) {
+  const token = req.cookies['jwt']
 
-// router.post('/create', function(req,res){
-//   const billed = req.body.billed
-//   const amount = req.body.amount
-//   const currency = req.body.currency
-//   const reminder = req.body.reminder
-//   const channel = req.body.channel
-//   console.log(`channel:${channel}`)
-
-//   const sqlQuery = 'INSERT INTO subscription_table(Billed_On,Amount_Charged,Currency,Reminder,name,user_id) VALUES(?,?,?,?,?,?);'
-//   db.query(sqlQuery,[billed,amount,currency,reminder,channel,req.session.userId],(err,result) => {
-//     if(err){
-//       console.log(err)
-//     } else {
-//       res.send("values inserted")
-//     }
-// })
-// })
-
-
-// router.get('/list',verifyJWT, (req,res) =>{
+  const claims = jwt.verify(token,'jwtsecret')
+  if(!claims){
+    res.sendStatus(401)
+  }
+  res.send('aunthenticated')
+})
+//   try {
+//     const cookie = req.cookies('jwt')
+//   const claims = verify(cookie,'jwtsecret')
+//   if(!claims){
+//     return res.status(401).send('unauthenticated')
+//   }
+//   res.send(claims.id)
   
-//   db.query('SELECT * FROM subscription_table WHERE user_id = ?',req.session.userId, (err,result) =>{
-//     if(err){
-//       console.log(err)
-//     }
-//     if(result.length> 0){
-//       console.log(result)
-//       res.send(result)
-//     } else {
-//       console.log('no result')
-//       res.send({message:"no data yet"})
-//     }
+//   } catch (error) {
+//     return res.status(401).send('unautheticated')
+//   }
+  
+// });
+
+router.post('/create', function(req,res){
+  const billed = req.body.billed
+  const amount = req.body.amount
+ const reminder = req.body.reminder
+  const channel = req.body.channel
+  
+
+  const sqlQuery = 'INSERT INTO subscription_info(SubscriptionName,BilledOn,Amount,reminder) VALUES(?,?,?,?);'
+  db.query(sqlQuery,[channel,billed,amount,reminder],(err,result) => {
+    if(err){
+      console.log(err)
+    } else {
+      res.send("values inserted")
+    }
+})
+})
+
+
+router.get('/list',authorization,(req,res) =>{
+  
+
+  
+  db.query('SELECT * FROM subscription_info WHERE user_id = ?',req.userId, (err,result) =>{
     
-//   })
-// })
+    if(err){
+      console.log(err)
+    }
+    if(result.length> 0){
+      console.log(`id:${req.userId}`)
+      res.send(result)
+     
+    } else {
+    
+      console.log(`id:${req.userId}`)
+      
+    }
+    
+  })
+})
 
 
 // router.post('/pref',(req,res)=>{
@@ -121,6 +122,7 @@ router.get('/', function(req, res, next) {
 // })
 
 router.post('/signup',(req,res)=>{
+  const name = req.body.names
   const email = req.body.email
   const password = req.body.password
   const confirmPassword = req.body.confirmPassword
@@ -129,7 +131,7 @@ router.post('/signup',(req,res)=>{
     res.status(400).send("passwords dont match")
   } else {
     bcrypt.hash(password,10,(err,hash)=>{
-      db.query('INSERT INTO users (email,pw) VALUES(?,?)',[email,hash],(error,results)=>{
+      db.query('INSERT INTO users (name,email,pw) VALUES(?,?,?)',[name,email,hash],(error,results)=>{
         if(error){
           console.log(error)
         } else {
@@ -145,21 +147,20 @@ router.post('/signup',(req,res)=>{
   
 })
 
-router.get('/signin',(req,res)=>{
-  if(req.session.userEmail){
-    res.send({loggedIn:true,user:req.session.userEmail})
-  } else{
-    res.send({loggedIn:false})
-  }
-})
-
+// router.get('/signin',(req,res)=>{
+//   if(req.session.userEmail){
+//     res.send({loggedIn:true,user:req.session.userEmail})
+//   } else{
+//     res.send({loggedIn:false})
+//   }
+// })
 
 
 router.post('/signin',(req,res)=>{
   const email = req.body.email
   const password = req.body.password 
 
-  db.query('SELECT * FROM users WHERE email = ?', email,(error,result)=>{
+  db.query(`SELECT * FROM users WHERE email = ?`,email,(error,result)=>{
     
     if(error){
       res.send({error:error})
@@ -172,17 +173,18 @@ router.post('/signin',(req,res)=>{
             }
           
             if(isTrue){
-              req.session.userEmail = result[0].email
-              req.session.userId = result[0].id
+              // req.session.userEmail = result[0].email
+           
               
 
-              const id = result[0].id
-              const token = jwt.sign({id},'jwtsecret')
+              // const id = result[0].id
+              const token = jwt.sign({id:result[0].id},'jwtsecret')
               res.cookie('jwt',token,{
                 httpOnly:true,
                 maxAge:24*60*60*1000
               })
-              res.send({message:'successful'})
+              res.send(result[0])
+            
               // res.json({auth:true,token:token,result:result})
               
               
@@ -229,10 +231,15 @@ router.post('/signin',(req,res)=>{
 
 
 //logout
-router.post('/logout',(req,res)=>{
-  res.cookie('jwt','',{
-    maxAge:0,
+router.post('/logout',authorization,(req,res)=>{
+  res.clearCookie('jwt')
+  // res.cookie('jwt','',{
+  //   maxAge:0,
     
-  })
+  // })
+ 
+  res.send({message:'logout succeeded'})
 })
 module.exports = router;
+
+

@@ -1,0 +1,23 @@
+GET http://localhost:9000/trial
+
+###
+
+POST http://localhost:9000/signup
+Content-Type: application/application/json
+
+{
+    "name":"Wanjiku",
+    "email":"wanjiku@email.com",
+    "password":"wanjiku",
+    "confirmPassword":"wanjiku"
+}
+
+###
+
+POST http://localhost:9000/signin
+Content-Type: application/application/json
+
+{
+   "email":"wanjiku@email.com",
+    "password":"wanjiku"
+}
