@@ -24,11 +24,12 @@ const db = mysql.createConnection({
 const authorization = (req,res,next)=>{
   const token = req.cookies.jwt
   if(!token){
-    return res.sendStatus(403)
+    return res.send({message:'you are not logged in'})
   } 
   try{
     const data = jwt.verify(token,'jwtsecret')
     req.userId = data.id
+    
     
     return next()
   } catch{
@@ -38,38 +39,27 @@ const authorization = (req,res,next)=>{
 }
 
 /* GET home page. */
-router.get('/home',function(req, res, next) {
-  const token = req.cookies['jwt']
-
-  const claims = jwt.verify(token,'jwtsecret')
-  if(!claims){
-    res.sendStatus(401)
-  }
-  res.send('aunthenticated')
+router.get('/home',authorization,function(req, res) {
+  db.query('SELECT * FROM subscription_info INNER JOIN users ON users.id = subscription_info.user_id WHERE users.id = ? ',req.userId,(error,results)=>{
+    if(error){
+      console.log(error)
+    }
+    
+    res.send(results)
+  })
 })
-//   try {
-//     const cookie = req.cookies('jwt')
-//   const claims = verify(cookie,'jwtsecret')
-//   if(!claims){
-//     return res.status(401).send('unauthenticated')
-//   }
-//   res.send(claims.id)
-  
-//   } catch (error) {
-//     return res.status(401).send('unautheticated')
-//   }
-  
-// });
+
 
 router.post('/create', function(req,res){
   const billed = req.body.billed
   const amount = req.body.amount
  const reminder = req.body.reminder
   const channel = req.body.channel
+  const cycle = req.body.cycle
   
 
-  const sqlQuery = 'INSERT INTO subscription_info(SubscriptionName,BilledOn,Amount,reminder) VALUES(?,?,?,?);'
-  db.query(sqlQuery,[channel,billed,amount,reminder],(err,result) => {
+  const sqlQuery = 'INSERT INTO subscription_info(SubscriptionName,BilledOn,Amount,reminder,cycle) VALUES(?,?,?,?,?);'
+  db.query(sqlQuery,[channel,billed,amount,reminder,cycle],(err,result) => {
     if(err){
       console.log(err)
     } else {
@@ -89,7 +79,7 @@ router.get('/list',authorization,(req,res) =>{
       console.log(err)
     }
     if(result.length> 0){
-      console.log(`id:${req.userId}`)
+     
       res.send(result)
      
     } else {
